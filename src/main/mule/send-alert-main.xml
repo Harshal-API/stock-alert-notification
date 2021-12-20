@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio" xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs"
+	xmlns:sns="http://www.mulesoft.org/schema/mule/sns"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/sns http://www.mulesoft.org/schema/mule/sns/current/mule-sns.xsd
+http://www.mulesoft.org/schema/mule/sqs http://www.mulesoft.org/schema/mule/sqs/current/mule-sqs.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd">
+	<flow name="send-alert-mainFlow" doc:id="568b9fbb-b2e0-4792-9e9f-b655c76d4a6c" >
+		<http:listener doc:name="Listener" doc:id="bed09f52-9dd9-4a91-8626-124a6818dbdd" path="/sendalert" config-ref="HTTP_Listener_config1"/>
+		<db:select doc:name="Alert subscription" doc:id="70287df6-0200-45b5-9f9c-e8aaf05f3e5f" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from stockalert;]]></db:sql>
+		</db:select>
+		<set-variable value="#[payload]" doc:name="alert subsciption" doc:id="62099388-e733-41e7-9290-ee7d9f108e59" variableName="dbRows"/>
+		<ee:transform doc:name="JSON" doc:id="95c84a64-5c89-4437-9a22-9b57a58536f4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="27278ef2-8bc8-4381-aa0c-7ad22384b4f4" >
+			<http:request method="GET" doc:name="REST API Call" doc:id="73815198-b617-4e47-a81a-5cd55fdd5f12" path="/price" target="apiResponse" targetValue="#[payload[0]]" config-ref="HTTP_Request_configuration">
+				<reconnect frequency="20000" />
+				<http:headers ><![CDATA[#[{
+	"x-rapidapi-host" : "latest-stock-price.p.rapidapi.com",
+	"x-rapidapi-key" : "5714e2aae9mshaf8ea1787931fdap13692djsn285fda81375a"
+}]]]></http:headers>
+				<http:query-params ><![CDATA[#[{
+	"Indices": "NIFTY 50",
+	"Identifier": payload.stockName
+}]]]></http:query-params>
+			</http:request>
+			<set-variable value="#[payload]" doc:name="Current payload" doc:id="15ada57d-6fd5-4c20-9462-e2a9d719d9bd" variableName="current"/>
+			<ee:transform doc:name="JSON" doc:id="76f54397-cdf1-45c2-b0e6-cfbaf6c7a1fb" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{ 
+	"notificationMode": payload.notificationMode,
+	"mobileNumber": payload.mobileNumber,
+	"stockName": payload.stockName,
+	"open": vars.apiResponse.open,
+	"dayHigh": vars.apiResponse.dayHigh,
+	"dayLow": vars.apiResponse.dayLow,
+	"lastPrice": vars.apiResponse.lastPrice,
+	"change": vars.apiResponse.change,
+	"pChange": vars.apiResponse.pChange,
+	"volume": vars.apiResponse.totalTradedVolume,
+	"highTargetPrice": payload.highTargetPrice,
+	"lowTargetPrice": payload.lowTargetPrice
+	}
+	]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<choice doc:name="Choice" doc:id="23ab06c2-6fd9-41d5-a179-e1dbab2b384d" >
+				<when expression='#[(payload.lastPrice) &gt;= (payload.highTargetPrice)]'>
+					<logger level="INFO" doc:name="Above the target price" doc:id="ed8b0f8c-6ff7-4a3e-a4ac-d59c1cdbbe4e" message='#["The stock is up by" ++ " " ++ payload.pChange ++ " " ++ "Percent"]'/>
+					<set-variable value='#[%dw 2.0&#10;&#10;output text/plain&#10;&#10;---&#10;&#10;write(payload,"application/json")]' doc:name="Set Variable" doc:id="68e176a2-df7f-4d57-bd14-ccf4ccd40fa9" variableName="message"/>
+					<sns:publish doc:name="Publish to topic" doc:id="e6fcd5a4-f075-44d0-b62e-d23df766c495" topicArn="#[vars.current.arn]" config-ref="Amazon_SNS_configuration">
+						<sns:message ><![CDATA[#[vars.message]]]></sns:message>
+					</sns:publish>
+				</when>
+				<when expression='#[(payload.lastPrice) &lt;= (payload.lowTargetPrice)]'>
+					<logger level="INFO" doc:name="below the target price" doc:id="78f05171-0e1c-4848-8c5c-b20fad619926" message='#["The stock is down by" ++ " " ++ payload.pChange ++ " " ++ "Percent"]'/>
+					<set-variable value='#[%dw 2.0&#10;&#10;output text/plain&#10;&#10;---&#10;&#10;write(payload,"application/json")]' doc:name="Set Variable" doc:id="c935ce45-60a8-4c1f-9b3b-961ea6398693" variableName="message"/>
+					<sns:publish doc:name="Publish to topic" doc:id="e37ec653-25a3-44fa-9866-7f015d5892da" topicArn="#[vars.current.arn]" config-ref="Amazon_SNS_configuration">
+						<sns:message ><![CDATA[#[vars.message]]]></sns:message>
+					</sns:publish>
+				</when>
+				<otherwise >
+					<logger level="INFO" doc:name="Logger" doc:id="bf9c2bd8-7328-4576-b057-5e57af78b1de" message='#["No price value changed for" ++ vars.current.stockName]'/>
+				</otherwise>
+			</choice>
+		</foreach>
+	</flow>
+	<flow name="send-alert-mainFlow1" doc:id="bf4a091e-c5c3-474b-8d37-51550361394b" >
+		<sqs:receivemessages doc:name="Receive messages" doc:id="e10a851e-4e23-4a63-9074-8cfe0aeece27" queueUrl="https://sqs.us-east-1.amazonaws.com/268135692264/targetQueue2" config-ref="Amazon_SQS_Configuration1"/>
+		<ee:transform doc:name="Read payload" doc:id="86e5d888-7904-404d-bb4d-23a66226b74e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json  
+---
+using ( jsonPayload = read(payload, "application/json"))
+read(jsonPayload.Message, "application/json")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger --Payload" doc:id="55434983-505a-4fc0-9df0-1619faa70c63" message="#[payload]"/>
+		<choice doc:name="Choice" doc:id="160509fd-85d9-4c5c-a6a2-3cc76246b549" >
+			<when expression='#[payload.notificationMode == "SMS"]'>
+				<ee:transform doc:name="SMS" doc:id="594a01d4-894b-46bf-a8e4-7a94d37b7f62" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/x-www-form-urlencoded
+---
+{
+"To": payload.mobileNumber as String,
+"MessagingServiceSid" : "MGc2be858d2b4a0dc2be6849ec8ee21311",
+"Body": "Your target price for " ++ payload.stockName ++ " is achieved." ++ "\nCurrent Price: " ++ payload.lastPrice ++ 
+"\nOpen Price: " ++ payload.open ++ 
+"\nToday's Low: " ++ payload.dayLow ++ 
+"\nToday's High: " ++ payload.dayHigh ++ 
+"\nChange: " ++ payload.change ++ 
+"\nChange Percentage: " ++ payload.pChange  ++
+"\nVolume: " ++ payload.volume
+} ]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<twilio:create20100401-accounts-messagesjson-by-account-sid doc:name="Send Message" doc:id="f35819ea-197d-4865-9f75-1f8c4bac7de4" accountSid="ACca616332c5211e468af0081588f02326" config-ref="Twilio_Connector_Config"/>
+				<logger level="INFO" doc:name="End  --Logger" doc:id="648d89e4-77d6-4c15-bbd3-a5cfcab4e0eb" message='The alert has been sent via SMS'/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Whatsapp" doc:id="2b5619a8-860f-43ee-ad18-f24c8130ed8f">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/x-www-form-urlencoded
+---
+using( data=
+"Your target price for " ++ payload.stockName ++ " is achieved." ++ "\nCurrent Price: " ++ payload.lastPrice ++ 
+"\nOpen Price: " ++ payload.open ++ 
+"\nToday's Low: " ++ payload.dayLow ++ 
+"\nToday's High: " ++ payload.dayHigh ++ 
+"\nChange: " ++ payload.change ++ 
+"\nChange Percentage: " ++ payload.pChange  ++
+"\nVolume: " ++ payload.volume)
+
+{
+	"To": "whatsapp:" ++ payload.mobileNumber as String,
+	"From": "whatsapp:+14155238886",
+	"MessagingServiceSid": "MGc2be858d2b4a0dc2be6849ec8ee21311",
+	"Body": data
+}
+	 ]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<twilio:create20100401-accounts-messagesjson-by-account-sid doc:name="Send Message" doc:id="86523226-d8bd-4376-b84e-393882cc5616" accountSid="ACca616332c5211e468af0081588f02326" config-ref="Twilio_Connector_Config"/>
+				<logger level="INFO" doc:name="End -- Logger" doc:id="2fc2bdfc-424c-4c4f-8841-dc0d09657d0f" message="The alert has been sent via WhatsApp" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

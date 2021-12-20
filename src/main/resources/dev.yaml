@@ -1,0 +1,25 @@
+http:
+  host: "0.0.0.0"
+  port: "8081"
+  
+db:
+  host: "sql6.freemysqlhosting.net"
+  port: "3306"
+  user: "![a1FduGOt3qTyhRCLj6py3w==]"
+  password: "![h+K9FLcYsiDmsSj+9ZW9BA==]"
+  database: "![a1FduGOt3qTyhRCLj6py3w==]"
+
+api:
+  host: "latest-stock-price.p.rapidapi.com"
+  port: "443"
+  
+sns:
+  accesskey: "![j6eCOkfnqlth39zokKOX2ktz1Vsg855r]"
+  secretkey: "![HS2DbW3UMVlejxMHF9sS7vUJS62s1/mR8oK8Rp3UJgkVB31h61V441izg/gqhSG5]"
+sqs:
+  accesskey: "![j6eCOkfnqlth39zokKOX2ktz1Vsg855r]"
+  secretkey: "![HS2DbW3UMVlejxMHF9sS7vUJS62s1/mR8oK8Rp3UJgkVB31h61V44/ppeMLpl/eO]"
+  
+twilio:
+  user: "![zh5Sd+qkjIR+oaSYsk6ouYTSgMABCXRm9uqa33h0pENfdVZllwuGvQ==]"
+  password: "![ZRIcV/v1TVPxWnXDdup5dPAMP1QbAPDFrkQ6EldOAxWvv+sTeg2wUQ==]"

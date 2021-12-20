@@ -1,0 +1,1 @@
+"{\n  \"notificationMode\": \"SMS\",\n  \"mobileNumber\": \"+919653335102\",\n  \"stockName\": \"CIPLAEQN\",\n  \"open\": 864,\n  \"dayHigh\": 888,\n  \"dayLow\": 861.1,\n  \"lastPrice\": 885.25,\n  \"change\": 25.05,\n  \"pChange\": 2.91,\n  \"volume\": 6417235,\n  \"highTargetPrice\": 900,\n  \"lowTargetPrice\": 890\n}"

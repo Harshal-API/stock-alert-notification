@@ -1,0 +1,1 @@
+"{\n  \"notificationMode\": \"Whatsapp\",\n  \"mobileNumber\": \"+919653335102\",\n  \"stockName\": \"CIPLAEQN\",\n  \"open\": 864,\n  \"dayHigh\": 888,\n  \"dayLow\": 861.1,\n  \"lastPrice\": 884.65,\n  \"change\": 24.45,\n  \"pChange\": 2.84,\n  \"volume\": 6435153,\n  \"highTargetPrice\": 850,\n  \"lowTargetPrice\": 820\n}"

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio"
+	xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs" xmlns:sns="http://www.mulesoft.org/schema/mule/sns"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/sns http://www.mulesoft.org/schema/mule/sns/current/mule-sns.xsd
+http://www.mulesoft.org/schema/mule/sqs http://www.mulesoft.org/schema/mule/sqs/current/mule-sqs.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd">
+	<configuration doc:name="Configuration" doc:id="731e508a-c1d3-4791-aaca-31ed4a8bb668" defaultErrorHandler-ref="globalError_Handler" />
+	<configuration-properties doc:name="Configuration properties" doc:id="36025286-fe3e-48fe-a5b2-d5734bb36526" file="dev.yaml" />
+	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="d80f582e-4838-45da-b527-537e1048d876" >
+		<http:listener-connection host="${http.host}" port="${http.port}" />
+	</http:listener-config>
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="a261318f-86eb-488d-9155-f2fc8c97ab6f" file="dev.yaml" key="harshalsonawane2412" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="cdd981d9-88d7-41d5-a91f-aeab88b0a3af" >
+		<db:my-sql-connection host="${db.host}" port="${db.port}" user="${secure::db.user}" password="${secure::db.password}" database="${secure::db.database}" />
+	</db:config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="b34be961-f052-4054-a0d1-ac70d8115df0" >
+		<http:request-connection protocol="HTTPS" host="${api.host}" port="${api.port}" />
+	</http:request-config>
+	<sns:config name="Amazon_SNS_configuration" doc:name="Amazon SNS configuration" doc:id="322fdf1d-0f90-4212-b3ab-9e44c208af4d" >
+		<sns:basic-connection testTopic="arn:aws:sns:us-east-1:268135692264:testTopic" accessKey="${secure::sns.accesskey}" secretKey="${secure::sns.secretkey}" />
+	</sns:config>
+	<sqs:config name="Amazon_SQS_Configuration1" doc:name="Amazon SQS Configuration" doc:id="50abf266-f503-4855-9b22-5d6e42967b8f" >
+		<sqs:basic-connection accessKey="${secure::sqs.accesskey}" secretKey="${secure::sqs.secretkey}" />
+	</sqs:config>
+	<twilio:config name="Twilio_Connector_Config" doc:name="Twilio Connector Config" doc:id="7513f1c8-064e-48d2-95f4-595f79eb61fc" >
+		<twilio:account-sid-auth-token-connection username="${secure::twilio.user}" password="${secure::twilio.password}" />
+	</twilio:config>
+	<error-handler name="globalError_Handler" doc:id="7b5c535c-5c32-4dcf-a422-e3aac1223aa7" >
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="923df2a6-9972-4571-99bf-38d4447f3d0d" >
+			<ee:transform doc:name="Transform Message" doc:id="f0f6a954-7940-467f-b24a-193bfeca1af4" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": error.detailedDescription
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		</on-error-propagate>
+	</error-handler>
+</mule>
